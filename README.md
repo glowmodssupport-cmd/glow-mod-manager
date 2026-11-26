@@ -46,7 +46,7 @@ Each command accepts `x64` or `arm64`. Set `GLOW_BUILD_DIR` to write the artifac
 
 ### Windows releases with SignPath
 
-The **Windows release** GitHub Actions workflow builds a release from the standalone desktop repository. Run it with signing off to build the first downloadable release for the SignPath application. The source is available under the MIT licence.
+The **Windows release** GitHub Actions workflow runs the unit tests and verifies the Windows installer and its embedded release settings. Run the packaged-app integration test on a Windows desktop before distributing a release. Run it with signing off to build the first downloadable release for the SignPath application. The source is available under the MIT licence.
 
 After SignPath approval, link the public repository as a trusted build source. Copy `signpath-artifact.xml` into the project’s default artifact configuration. It checks the installer name, product and version. Scope the signing policy to the release workflow and approved release refs. Set these values on GitHub.
 

@@ -37,9 +37,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run package -- x64
-      - name: Test packaged app
-        timeout-minutes: 4
-        run: node test/desktop-smoke.cjs 'dist/win-unpacked/Glow Mod Manager.exe'
+      - name: Verify the Windows package and release configuration
+        run: node test/packaged-release.cjs dist
       - name: Upload installer for release or signing
         id: installer
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
