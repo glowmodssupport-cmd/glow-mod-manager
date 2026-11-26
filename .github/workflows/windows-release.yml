@@ -1,0 +1,76 @@
+name: Windows release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version, for example 1.0.1
+        required: true
+        type: string
+      sign:
+        description: Send the installer to SignPath
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 90
+    env:
+      GLOW_RELEASE_VERSION: ${{ inputs.version }}
+      GLOW_MODS_URL: ${{ vars.GLOW_MODS_URL }}
+      GLOW_UPDATE_URL: ${{ inputs.sign && vars.GLOW_UPDATE_URL || '' }}
+      GLOW_WINDOWS_PUBLISHER: ${{ inputs.sign && vars.GLOW_WINDOWS_PUBLISHER || '' }}
+      GLOW_SIGNPATH: ${{ inputs.sign && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run package -- x64
+      - name: Test packaged app
+        run: node test/desktop-smoke.cjs 'dist/win-unpacked/Glow Mod Manager.exe'
+      - name: Upload installer for release or signing
+        id: installer
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          path: dist/GlowModManager-Setup-*.exe
+          if-no-files-found: error
+          archive: false
+      - name: Sign the Windows installer
+        if: inputs.sign
+        uses: signpath/github-action-submit-signing-request@a2c5b60d9c75f073142b653c354b632eedce097b # v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          skip-decompress: true
+          parameters: |
+            version: ${{ toJSON(inputs.version) }}
+          output-artifact-directory: signed
+      - name: Verify signature and generate update manifest
+        if: inputs.sign
+        shell: pwsh
+        run: |
+          ./prepare-update-feed.ps1 -Installer "signed/GlowModManager-Setup-$env:GLOW_RELEASE_VERSION.exe" `
+            -Version $env:GLOW_RELEASE_VERSION -Publisher $env:GLOW_WINDOWS_PUBLISHER -Output update-feed
+      - name: Upload verified update files
+        if: inputs.sign
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: windows-update-feed
+          path: update-feed
+          if-no-files-found: error

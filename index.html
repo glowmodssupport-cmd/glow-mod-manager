@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en" data-motion="system">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Glow Mod Manager</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="renderer.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <div class="window">
+    <!-- Title bar artwork (draggable region) -->
+    <header class="titlebar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"><span class="logo-core"></span></span>
+        <span class="brand-name">Glow</span>
+        <span class="brand-sub">Mod Manager</span>
+      </div>
+      <div class="title-game">
+        <span class="title-dot" id="titleDot" aria-hidden="true"></span>
+        <span id="titleGame">No game selected</span>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="checkUpdatesBtn" hidden>Check for updates</button>
+    </header>
+
+    <section class="update-banner" id="updateBanner" aria-label="App updates" hidden>
+      <p id="updateMessage" role="status"></p>
+      <button type="button" class="btn btn-primary btn-sm" id="updateNowBtn" hidden>Update now</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="dismissUpdateBtn" aria-label="Dismiss update message">Dismiss</button>
+    </section>
+
+    <div class="shell" id="shell">
+      <nav class="sidebar glass" aria-label="Primary">
+        <button type="button" class="nav-toggle" id="navToggle" aria-expanded="true" aria-controls="navList" aria-label="Collapse navigation">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <ul class="nav-list" id="navList">
+          <li>
+            <button type="button" class="nav-item" data-view="library" aria-current="page">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>
+              <span class="nav-label">Library</span>
+              <span class="nav-badge" id="navCount">0</span><span class="visually-hidden"> mods</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="nav-item" data-view="game">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 6h10a5 5 0 0 1 5 5v1.5a3.5 3.5 0 0 1-6.3 2.1L14.5 13h-5l-1.2 1.6A3.5 3.5 0 0 1 2 12.5V11a5 5 0 0 1 5-5z"/><path d="M6.5 10.5h3M8 9v3M15.5 10h.01M17.5 12h.01"/></svg>
+              <span class="nav-label">Game setup</span>
+              <span class="nav-flag" id="navSetupFlag" hidden><span class="visually-hidden">(setup incomplete)</span></span>
+            </button>
+          </li>
+          <li>
+            <button type="button" class="nav-item" data-view="about">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/></svg>
+              <span class="nav-label">Safety &amp; settings</span>
+            </button>
+          </li>
+        </ul>
+        <div class="sidebar-foot">
+          <span class="foot-orb" aria-hidden="true"></span>
+          <span class="nav-label foot-text">Local only · no network</span>
+        </div>
+      </nav>
+
+      <main id="main" class="main" tabindex="-1" aria-busy="false">
+        <div id="errorBanner" class="banner banner-error" role="alert" hidden>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+          <p class="banner-text" id="errorText"></p>
+          <button type="button" class="btn btn-ghost btn-icon" id="errorDismiss" aria-label="Dismiss error">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+
+        <aside class="setup-notice recovery-notice glass" id="recoveryNotice" aria-labelledby="recoveryTitle" hidden>
+          <div class="setup-body">
+            <h2 id="recoveryTitle">Restore the original game folder</h2>
+            <p id="recoveryText"></p>
+            <button type="button" class="btn btn-glass" id="restoreBtn">Restore original</button>
+          </div>
+        </aside>
+        <section class="launch-progress glass" id="launchProgress" aria-label="Preparing modded launch" hidden>
+          <div class="launch-progress-top">
+            <p id="progressLabel">Preparing the game copy</p>
+            <button type="button" class="btn btn-ghost btn-sm" id="cancelLaunchBtn" hidden>Cancel</button>
+          </div>
+          <progress id="progressBar" aria-label="Game copy progress"></progress>
+        </section>
+
+        <!-- ================= LIBRARY ================= -->
+        <section class="view" id="view-library" data-panel="library" aria-labelledby="libraryHeading">
+          <div class="view-head">
+            <div>
+              <p class="eyebrow">Your mods</p>
+              <h1 id="libraryHeading" tabindex="-1">Library</h1>
+              <p class="lead" id="librarySummary">Import local ZIP files and switch mods on when your game is set up.</p>
+            </div>
+            <div class="play-block">
+              <div class="launch-actions">
+              <button type="button" class="btn btn-play" id="playBtn" disabled aria-describedby="playHint">
+                <svg class="icon icon-fill" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg>
+                <span>Launch modded</span>
+              </button>
+              <button type="button" class="btn btn-glass" id="vanillaBtn" disabled aria-describedby="playHint">Launch original</button>
+              </div>
+              <p class="hint" id="playHint">Choose a game to unlock both launch options.</p>
+            </div>
+          </div>
+
+          <div class="library-overview" aria-label="Library overview">
+            <div class="overview-tile glass"><span class="overview-label">Imported</span><strong id="totalMods">0</strong></div>
+            <div class="overview-tile glass"><span class="overview-label">Selected</span><strong id="selectedMods">0</strong></div>
+            <div class="overview-tile glass"><span class="overview-label">Game status</span><strong id="sessionStatus">Setup needed</strong></div>
+          </div>
+          <div class="setup-notice glass" id="setupNotice" hidden>
+            <div class="setup-icon" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+            </div>
+            <div class="setup-body">
+              <h2 id="setupTitle">Pick a game</h2>
+              <p id="setupLead">Glow prepares a separate copy for modded launch.</p>
+              <ol class="steps">
+                <li><strong>Pick your game.</strong> Use <em>Find games</em> or <em>Browse</em> to choose its executable.</li>
+                <li><strong>Import and select.</strong> Add ZIPs below and select the mods for this session.</li>
+                <li><strong>Launch modded.</strong> Glow creates or reuses the mod folder in a separate game copy.</li>
+              </ol>
+              <p class="note">You can import ZIPs into the library before choosing a game.</p>
+              <button type="button" class="btn btn-glass" id="gotoSetupBtn">Open game setup</button>
+            </div>
+          </div>
+
+          <div class="dropzone glass" id="dropZone">
+            <div class="drop-art" aria-hidden="true">
+              <span class="drop-orb"><span class="zip-glyph"></span></span>
+            </div>
+            <div class="drop-copy">
+              <h2 id="dropTitle">Drop mod ZIPs here</h2>
+              <p id="dropText">Drop Glow Mods package ZIPs here or choose them with the import button. Files are added to your Glow library only.</p>
+              <button type="button" class="btn btn-primary" id="importBtn">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+                <span>Import ZIP…</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="mods-panel glass">
+            <div class="library-list-head">
+              <h2 id="modsHeading">Mod library</h2>
+              <div class="btn-row">
+                <button type="button" class="btn btn-ghost btn-sm" id="findModsBtn" hidden>Find more mods</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="refreshBtn" title="Refresh library (F5)">Refresh</button>
+              </div>
+            </div>
+            <div class="toolbar" role="search" aria-label="Filter and sort mods">
+              <div class="field field-search">
+                <label for="searchInput" class="visually-hidden">Search mods</label>
+                <svg class="icon field-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input type="search" id="searchInput" placeholder="Search mods" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="field">
+                <label for="categorySelect" class="field-label">Category</label>
+                <select id="categorySelect">
+                  <option value="all">All categories</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="statusSelect" class="field-label">Status</label>
+                <select id="statusSelect">
+                  <option value="all">All</option>
+                  <option value="enabled">Selected</option>
+                  <option value="disabled">Unselected</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="sortSelect" class="field-label">Sort</label>
+                <select id="sortSelect">
+                  <option value="name">Name A-Z</option>
+                  <option value="selected">Selected first</option>
+                  <option value="category">Category</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" id="resetFiltersBtn" hidden>Reset filters</button>
+              <p class="result-count" id="resultCount" aria-live="polite"></p>
+            </div>
+
+            <ul class="mod-list" id="modList" aria-labelledby="modsHeading"></ul>
+
+            <button type="button" class="btn btn-ghost btn-sm" id="moreModsBtn" hidden>Show more mods</button>
+
+            <div class="empty" id="emptyLibrary" hidden>
+              <span class="empty-art" aria-hidden="true"></span>
+              <h3>Your library is empty</h3>
+              <p>Drop a local ZIP above or use <em>Import ZIP…</em> to add your first mod.</p>
+            </div>
+            <div class="empty" id="emptyFilter" hidden>
+              <h3>No mods match</h3>
+              <p>Try a different search, category or status.</p>
+              <button type="button" class="btn btn-glass" id="clearFiltersBtn">Clear filters</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= GAME SETUP ================= -->
+        <section class="view" id="view-game" data-panel="game" aria-labelledby="gameHeading" hidden>
+          <div class="view-head">
+            <div>
+              <p class="eyebrow">Step by step</p>
+              <h1 id="gameHeading" tabindex="-1">Game setup</h1>
+              <p class="lead">Choose your game executable. Glow prepares the mod folder in a separate game copy.</p>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <article class="card glass" aria-labelledby="currentGameHeading">
+              <h2 id="currentGameHeading">Current game</h2>
+              <div id="noGame" class="muted-block">
+                <p>No game selected yet. Use <em>Find games</em> or <em>Browse</em>.</p>
+              </div>
+              <dl class="facts" id="gameFacts" hidden>
+                <div><dt>Name</dt><dd id="factName"></dd></div>
+                <div><dt>Executable</dt><dd id="factExe" class="mono"></dd></div>
+                <div><dt>Mod folder</dt><dd id="factFolder" class="mono"></dd></div>
+                <div><dt>Modded copy</dt><dd id="factProfile" class="mono"></dd></div>
+              </dl>
+              <div class="launch-actions">
+              <button type="button" class="btn btn-play btn-play-sm" id="playBtn2" disabled>
+                <svg class="icon icon-fill" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5v14l11-7z"/></svg>
+                <span>Launch modded</span>
+              </button>
+              <button type="button" class="btn btn-glass btn-play-sm" id="vanillaBtn2" disabled>Launch original</button>
+              </div>
+            </article>
+
+            <article class="card glass" aria-labelledby="chooseGameHeading">
+              <h2 id="chooseGameHeading"><span class="step-num" aria-hidden="true">1</span>Choose a game</h2>
+              <p class="hint">Search common install locations, then pick the matching game. For a custom folder, use Browse.</p>
+              <div class="btn-row">
+                <button type="button" class="btn btn-primary" id="detectBtn">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 12l5-4"/></svg>
+                  <span>Find games</span>
+                </button>
+                <button type="button" class="btn btn-glass" id="browseBtn">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                  <span>Browse…</span>
+                </button>
+              </div>
+              <div class="detect-results" id="detectResults" hidden>
+                <h3 id="detectHeading">Executables found</h3>
+                <ul class="detect-list" id="detectList" aria-labelledby="detectHeading"></ul>
+                <p class="hint" id="detectEmpty" hidden>No game executables found. Use <em>Browse</em> to choose yours.</p>
+              </div>
+            </article>
+
+            <article class="card glass span-2" aria-labelledby="folderHeading">
+              <h2 id="folderHeading">Mod folder</h2>
+              <p class="hint">Glow defaults to <code>mods</code> inside the separate game copy. It reuses that folder when available and creates it when needed.</p>
+              <details class="advanced-folder">
+                <summary>Change the folder for this game</summary>
+                <p class="hint" id="folderHint">Use a relative path documented by the game or mod loader. The loader must support separate mod subfolders.</p>
+              <div class="folder-row">
+                <div class="field field-grow">
+                  <label for="folderInput" class="field-label">Relative data folder</label>
+                  <input type="text" id="folderInput" autocomplete="off" spellcheck="false" placeholder="e.g. mods" aria-describedby="folderHint folderError" disabled>
+                </div>
+                <button type="button" class="btn btn-primary" id="folderSaveBtn" disabled>Save folder</button>
+                <button type="button" class="btn btn-glass" id="folderDefaultBtn" disabled>Use default</button>
+              </div>
+              <p class="field-error" id="folderError" hidden></p>
+              </details>
+              <p class="note gta-note">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+                <span>Use a game or mod loader that supports the folder layout selected above.</span>
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <!-- ================= SAFETY / SETTINGS ================= -->
+        <section class="view" id="view-about" data-panel="about" aria-labelledby="aboutHeading" hidden>
+          <div class="view-head">
+            <div>
+              <p class="eyebrow">How Glow behaves</p>
+              <h1 id="aboutHeading" tabindex="-1">Safety &amp; settings</h1>
+              <p class="lead">Review how Glow stores and deploys your packages.</p>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <article class="card glass" aria-labelledby="safetyHeading">
+              <h2 id="safetyHeading">Game files and storage</h2>
+              <ul class="promise-list">
+                <li><strong>Local library.</strong> Your mod library and settings are stored on this device.</li>
+                <li><strong>Local ZIPs only.</strong> Import local Glow Mods ZIP packages containing <code>glow-mod.json</code> and a <code>files/</code> folder.</li>
+                <li><strong>Separate game copy.</strong> Glow copies selected mod files into its own game copy. Launch Original opens the executable you selected.</li>
+                <li><strong>Disk space.</strong> Preparing a modded launch takes time and uses extra space for a separate game copy.</li>
+              </ul>
+              <dl class="facts">
+                <div><dt>Library</dt><dd id="libraryFolder" class="mono">-</dd></div>
+                <div><dt>Latest copy</dt><dd id="profileFolder" class="mono">-</dd></div>
+                <div><dt>Saved copies</dt><dd id="profileCount">0</dd></div>
+              </dl>
+              <button type="button" class="btn btn-glass" id="clearProfilesBtn" disabled>Clear saved copies</button>
+            </article>
+
+            <article class="card glass" aria-labelledby="prefsHeading">
+              <h2 id="prefsHeading">Preferences</h2>
+              <div class="field">
+                <label for="motionSelect" class="field-label">Motion</label>
+                <select id="motionSelect">
+                  <option value="system">Follow system setting</option>
+                  <option value="reduce">Reduce motion</option>
+                  <option value="full">Full motion</option>
+                </select>
+              </div>
+              <label class="check">
+                <input type="checkbox" id="confirmDeployCheck" checked>
+                <span>Ask before selecting a mod for modded launch</span>
+              </label>
+              <p class="hint">Removing a mod always asks for confirmation.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <footer class="statusbar">
+      <span class="spinner" id="busySpinner" aria-hidden="true" hidden></span>
+      <span id="statusText" class="status-text" role="status" aria-live="polite">Starting…</span>
+      <span class="status-meta" id="statusMeta"></span>
+    </footer>
+  </div>
+
+  <dialog class="dialog" id="confirmDialog" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
+    <div class="dialog-inner glass">
+      <h2 id="confirmTitle">Are you sure?</h2>
+      <p id="confirmBody"></p>
+      <div class="btn-row dialog-actions">
+        <button type="button" class="btn btn-glass" id="confirmCancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </dialog>
+
+  <template id="modRowTpl">
+    <li class="mod-row">
+      <span class="mod-glyph" aria-hidden="true"></span>
+      <div class="mod-main">
+        <h3 class="mod-name"></h3>
+        <div class="mod-meta">
+          <span class="chip mod-category"></span>
+          <span class="mod-files"></span>
+          <span class="mod-state"></span>
+        </div>
+        <details class="mod-details" hidden>
+          <summary>Show files</summary>
+          <ul class="file-list"></ul>
+        </details>
+      </div>
+      <div class="mod-actions">
+        <button type="button" class="switch" role="switch" aria-checked="false">
+          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+          <span class="switch-text" aria-hidden="true">Off</span>
+        </button>
+        <button type="button" class="btn btn-ghost btn-danger-ghost mod-remove">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+          <span class="remove-label">Remove</span>
+        </button>
+      </div>
+    </li>
+  </template>
+
+  <template id="detectRowTpl">
+    <li class="detect-row">
+      <div class="detect-info">
+        <span class="detect-name"></span>
+        <span class="detect-exe mono"></span>
+      </div>
+      <button type="button" class="btn btn-glass btn-sm detect-select">Use this game</button>
+    </li>
+  </template>
+</body>
+</html>

@@ -1,0 +1,70 @@
+{
+  "name": "glow-mod-manager",
+  "version": "1.0.0",
+  "description": "Glow Mods desktop manager for local data-only mod packages",
+  "author": "Glow Mods",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "package": "node package-desktop.cjs win",
+    "package:mac": "node package-desktop.cjs mac",
+    "package:linux": "node package-desktop.cjs linux"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.12",
+    "js-yaml": "4.3.2",
+    "yauzl": "3.4.0"
+  },
+  "devDependencies": {
+    "electron": "45.5.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.glowmods.manager",
+    "productName": "Glow Mod Manager",
+    "artifactName": "GlowModManager-Setup-${version}.${ext}",
+    "files": [
+      "main.js",
+      "preload.js",
+      "library.js",
+      "index.html",
+      "renderer.js",
+      "styles.css",
+      "build/icon.png",
+      "discovery.js",
+      "isolated-copy.js",
+      "updates.js",
+      "game-paths.js"
+    ],
+    "win": {
+      "target": "nsis",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.games",
+      "artifactName": "GlowModManager-${version}-mac-${arch}.${ext}"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Game",
+      "artifactName": "GlowModManager-${version}-linux-${arch}.${ext}",
+      "icon": "build/icon.png",
+      "maintainer": "Glow Mods"
+    }
+  },
+  "license": "MIT"
+}

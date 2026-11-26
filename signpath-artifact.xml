@@ -1,0 +1,8 @@
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <pe-file path="GlowModManager-Setup-${version}.exe" product-name="Glow Mod Manager" product-version="${version}">
+    <authenticode-sign />
+  </pe-file>
+</artifact-configuration>
