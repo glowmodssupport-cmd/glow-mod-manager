@@ -17,7 +17,15 @@ async function eventually(check) {
 
 async function connect(url) {
   const ws = new WebSocket(url);
-  await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(Error('DevTools connection timed out.'));
+      ws.close();
+    }, 7000);
+    ws.onopen = () => { clearTimeout(timer); resolve(); };
+    ws.onerror = () => { clearTimeout(timer); reject(Error('DevTools connection failed.')); };
+    ws.onclose = () => { clearTimeout(timer); reject(Error('DevTools connection closed before opening.')); };
+  });
   const pending = new Map();
   let next = 0;
   ws.onmessage = ({ data }) => {
@@ -48,20 +56,21 @@ async function connect(url) {
   const profile = path.join(fixture, 'profile');
   fs.mkdirSync(profile);
   const appRoot = path.join(__dirname, '..');
-  const binary = process.argv[2] || require('electron');
+  const binary = path.resolve(process.argv[2] || require('electron'));
   const game = path.join(fixture, 'game');
   fs.mkdirSync(game);
   const cs = path.join(game, 'Example.cs');
   fs.writeFileSync(cs, 'class Example { static void Main() { System.IO.File.WriteAllText("launch-confirmed.txt", System.IO.Directory.Exists("mods") ? "modded" : "original"); } }');
   const exe = path.join(game, 'GlowSampleGame.exe');
   const compiler = path.join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319/csc.exe');
-  execFileSync(compiler, ['/nologo', '/out:' + exe, cs], { windowsHide: true });
+  console.log('Compiling the disposable game fixture.');
+  execFileSync(compiler, ['/nologo', '/out:' + exe, cs], { windowsHide: true, timeout: 30_000 });
   const zip = path.join(fixture, 'SampleMod.zip');
   const payload = path.join(fixture, 'sample');
   fs.mkdirSync(path.join(payload, 'files'), { recursive: true });
   fs.writeFileSync(path.join(payload, 'glow-mod.json'), JSON.stringify({ format: 'glow-mod-v1', name: 'Sample lighting', category: 'Visuals' }));
   fs.writeFileSync(path.join(payload, 'files/lighting.ini'), 'brightness=15');
-  execFileSync('tar.exe', ['-a', '-cf', zip, '-C', payload, 'glow-mod.json', 'files'], { windowsHide: true });
+  execFileSync('tar.exe', ['-a', '-cf', zip, '-C', payload, 'glow-mod.json', 'files'], { windowsHide: true, timeout: 15_000 });
 
   const args = [...(process.argv[2] ? [] : [appRoot]), '--user-data-dir=' + profile, '--remote-debugging-port=0', '--disable-gpu'];
   const child = spawn(binary, args, { cwd: appRoot, windowsHide: true, stdio: 'ignore' });
@@ -71,6 +80,7 @@ async function connect(url) {
   let page;
   let browserUrl;
   try {
+    console.log('Starting the packaged app with a temporary profile.');
     const port = await eventually(() => {
       if (spawnError) throw spawnError;
       if (child.exitCode !== null) throw Error('Desktop app exited ' + child.exitCode);
@@ -79,7 +89,7 @@ async function connect(url) {
       browserUrl = 'ws://127.0.0.1:' + port + targetPath;
       return port;
     });
-    const target = await eventually(async () => (await (await fetch('http://127.0.0.1:' + port + '/json/list')).json())
+    const target = await eventually(async () => (await (await fetch('http://127.0.0.1:' + port + '/json/list', { signal: AbortSignal.timeout(3000) })).json())
       .find((entry) => entry.type === 'page' && entry.url.endsWith('/index.html')));
     page = await connect(target.webSocketDebuggerUrl);
     async function evaluate(expression) {
@@ -98,6 +108,7 @@ async function connect(url) {
     const initial = await evaluate('glow.state()');
     assert.equal(initial.game, null);
     assert.ok(path.relative(profile, initial.folder).split(path.sep)[0] !== '..');
+    console.log('Testing game setup, mod import and both launch modes.');
     await evaluate('glow.selectGame(' + JSON.stringify(exe) + ')');
     await page.run('Page.reload');
     await eventually(() => evaluate('!!document.querySelector("#vanillaBtn") && !document.querySelector("#vanillaBtn").disabled'));
@@ -140,6 +151,7 @@ async function connect(url) {
     assert.equal(fs.existsSync(runningCopy), false);
     assert.equal((await evaluate('glow.remove(' + JSON.stringify(id) + ')')).mods.length, 0);
     assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true);
+    console.log('Testing pagination and search with 500 mods.');
     for (let i = 0; i < 500; i++) {
       const id = i.toString(16).padStart(64, '0');
       const dir = path.join(initial.folder, id);
