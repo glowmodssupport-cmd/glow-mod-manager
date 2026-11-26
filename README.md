@@ -1,8 +1,10 @@
 # Glow Mod Manager
 
-## Credits
+## Contributors
 
-Glow Mods maintains this project. Claude by Anthropic and Codex by OpenAI contributed to planning, implementation, and testing.
+- **Glow Mods** maintains the project.
+- **Claude (Anthropic)** contributed to planning, implementation, and review.
+- **Codex (OpenAI)** contributed to planning, implementation, and testing.
 
 Glow Mod Manager is a desktop app for compatible data-only mod packages. On Windows, run the single setup executable and open Glow Mod Manager from Start or the desktop.
 

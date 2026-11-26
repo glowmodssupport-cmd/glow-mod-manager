@@ -66,5 +66,13 @@
       "maintainer": "Glow Mods"
     }
   },
-  "license": "MIT"
+  "license": "MIT",
+  "contributors": [
+    {
+      "name": "Claude (Anthropic)"
+    },
+    {
+      "name": "Codex (OpenAI)"
+    }
+  ]
 }
