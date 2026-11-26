@@ -17,7 +17,8 @@ const settings = {
 if (signPath && (platform !== 'win' || !settings.updateUrl || !settings.publisher)) {
   throw Error('SignPath staging needs a Windows build, an HTTPS update feed and the SignPath certificate subject.');
 }
-const config = { ...options, extraMetadata: { version, glowRelease: settings } };
+// Opt in to update metadata only for a configured feed, including on GitHub Actions.
+const config = { ...options, publish: null, extraMetadata: { version, glowRelease: settings } };
 if (process.env.GLOW_BUILD_DIR) config.directories = { output: process.env.GLOW_BUILD_DIR };
 if (arch === 'arm64' && platform === 'win') config.artifactName = 'GlowModManager-Setup-${version}-arm64.${ext}';
 if (settings.updateUrl) {
