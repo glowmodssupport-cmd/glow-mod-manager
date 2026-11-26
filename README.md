@@ -65,3 +65,11 @@ Run **Windows release** with signing on and a new version, then approve the sign
 Install the first signed build manually. On a test PC with that build, verify **Check for updates → Update now → Restart to update** against a newer signed release before distributing the signed updater. A build exposes **Check for updates** when it contains a release feed. Builds with a catalog URL also expose **Find more mods**.
 
 For direct Windows signing, set the update URL and publisher plus `WIN_CSC_LINK` or `CSC_LINK` instead. Set an HTTPS feed on signed macOS builds and AppImage Linux builds if you plan to distribute updates for those platforms.
+
+### Code signing policy
+
+Glow Mod Manager has a dedicated GitHub Actions workflow for Windows releases and is preparing to apply for free signing from [SignPath.io](https://about.signpath.io/), with a certificate from [SignPath Foundation](https://signpath.org/). Release 1.0.0 is unsigned.
+
+- **Committer, reviewer, and signing approver:** The [Glow Mods maintainer](https://github.com/glowmodssupport-cmd) reviews proposed changes and manually approves release signing requests. Claude and Codex provide development assistance. Release approval belongs to the maintainer.
+- **Release origin:** Signing requests will use the Windows release workflow on GitHub-hosted runners, built from reviewed source in this repository. The workflow verifies the signed installer before generating update metadata.
+- **Privacy:** The app stores your mod library, game paths, and settings on your device. It does not upload them or send usage analytics. **Check for updates** contacts the configured release server when you use it. **Find more mods** opens the configured catalogue in your browser.
